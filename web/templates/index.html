@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SymGuard</title>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="app-container">
+        <header class="app-header">
+            <h1>SymGuard</h1>
+            <p>Z3-backed symbolic execution engine to mathematically prove exploitability.</p>
+        </header>
+
+        <main class="main-content">
+            <!-- Input Section -->
+            <section class="panel input-section">
+                <div class="input-header">
+                    <h2>Source Code</h2>
+                    <div class="actions">
+                        <label for="file-upload" class="btn btn-secondary">Upload .py</label>
+                        <input type="file" id="file-upload" accept=".py" style="display: none;">
+                        <button id="analyze-btn" class="btn btn-primary">
+                            <span class="btn-text">Analyze</span>
+                            <span class="spinner" style="display: none;"></span>
+                        </button>
+                    </div>
+                </div>
+                <div class="editor-container">
+                    <textarea id="code-input" placeholder="Paste your Python code here..."></textarea>
+                </div>
+                <div id="error-message" class="error-message" style="display: none;"></div>
+            </section>
+
+            <!-- Results Section (hidden by default) -->
+            <section id="results-section" class="panel results-section" style="display: none;">
+                <div class="results-header">
+                    <h2>Analysis Report</h2>
+                    <span id="target-filename" class="target-filename">app.py</span>
+                </div>
+
+                <!-- Summary Badges -->
+                <div class="summary-container">
+                    <div class="badge badge-high">
+                        <span class="badge-value" id="summary-vulnerable">0</span>
+                        <span class="badge-label">Vulnerable</span>
+                    </div>
+                    <div class="badge badge-safe">
+                        <span class="badge-value" id="summary-safe">0</span>
+                        <span class="badge-label">Safe</span>
+                    </div>
+                    <div class="badge badge-unknown">
+                        <span class="badge-value" id="summary-unknown">0</span>
+                        <span class="badge-label">Unknown</span>
+                    </div>
+                </div>
+
+                <!-- Code Viewer (Highlighting) -->
+                <div class="code-viewer-container">
+                    <h3>Code Trace</h3>
+                    <div id="code-viewer" class="code-viewer"></div>
+                </div>
+
+                <!-- Findings List -->
+                <div class="findings-container">
+                    <h3>Findings</h3>
+                    <div id="findings-list" class="findings-list">
+                        <!-- Finding cards injected here by JS -->
+                    </div>
+                </div>
+
+                <!-- Info Notes Section -->
+                <div class="info-notes-container" id="info-notes-container" style="display: none;">
+                    <h3>Analysis Notes</h3>
+                    <ul id="info-notes-list" class="info-notes-list">
+                        <!-- Info items injected here by JS -->
+                    </ul>
+                </div>
+
+            </section>
+        </main>
+    </div>
+
+    <!-- Application Logic -->
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

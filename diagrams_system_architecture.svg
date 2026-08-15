@@ -1,0 +1,68 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1300 840' width='1300' height='840'>
+<rect x='0' y='0' width='1300' height='840' fill='#ffffff'/>
+<defs>
+  <marker id='arrowhead' markerWidth='10' markerHeight='10' refX='8' refY='3'
+          orient='auto' markerUnits='strokeWidth'>
+    <path d='M0,0 L0,6 L9,3 z' fill='#333333'/>
+  </marker>
+</defs>
+<text x='650.0' y='28' font-family='Helvetica, Arial, sans-serif' font-size='20' font-weight='700' fill='#111111' text-anchor='middle'>Static Vulnerability Analyzer — System Architecture</text>
+<rect x='40' y='60' width='220' height='60' rx='6' fill='#ffffff' stroke='#1a1a1a' stroke-width='1.5'/>
+<text x='150.0' y='85.33333333333333' font-family='Helvetica, Arial, sans-serif' font-size='13' font-weight='400' fill='#1a1a1a' text-anchor='middle'>Web Dashboard</text>
+<text x='150.0' y='103.33333333333333' font-family='Helvetica, Arial, sans-serif' font-size='13' font-weight='400' fill='#1a1a1a' text-anchor='middle'>(React / Next.js, browser)</text>
+<rect x='40' y='190' width='220' height='60' rx='6' fill='#ffffff' stroke='#1a1a1a' stroke-width='1.5'/>
+<text x='150.0' y='215.33333333333334' font-family='Helvetica, Arial, sans-serif' font-size='13' font-weight='400' fill='#1a1a1a' text-anchor='middle'>CLI</text>
+<text x='150.0' y='233.33333333333334' font-family='Helvetica, Arial, sans-serif' font-size='13' font-weight='400' fill='#1a1a1a' text-anchor='middle'>analyzer.py --format json</text>
+<rect x='340' y='90' width='200' height='60' rx='6' fill='#ffffff' stroke='#1a1a1a' stroke-width='1.5'/>
+<text x='440.0' y='115.33333333333333' font-family='Helvetica, Arial, sans-serif' font-size='13' font-weight='400' fill='#1a1a1a' text-anchor='middle'>Backend API</text>
+<text x='440.0' y='133.33333333333331' font-family='Helvetica, Arial, sans-serif' font-size='13' font-weight='400' fill='#1a1a1a' text-anchor='middle'>(Flask / FastAPI)</text>
+<line x1='260' y1='90.0' x2='340' y2='120.0' stroke='#333333' stroke-width='1.6' marker-end='url(#arrowhead)'/>
+<rect x='233.01' y='86.0' width='133.98' height='19' fill='#ffffff'/>
+<text x='300.0' y='97.0' font-family='Helvetica, Arial, sans-serif' font-size='11' fill='#333333' text-anchor='middle'>POST /analyze  {code}</text>
+<rect x='620' y='70' width='480' height='350' rx='8' fill='none' stroke='#1a1a1a' stroke-width='1.5'/>
+<text x='634' y='60' font-family='Helvetica, Arial, sans-serif' font-size='13' font-weight='600' fill='#1a1a1a'>Core Reasoning Engine  (analyzer.py)</text>
+<rect x='660' y='100' width='400' height='62' rx='6' fill='#ffffff' stroke='#1a1a1a' stroke-width='1.5'/>
+<text x='860.0' y='126.33333333333333' font-family='Helvetica, Arial, sans-serif' font-size='13' font-weight='400' fill='#1a1a1a' text-anchor='middle'>1. AST Parser</text>
+<text x='860.0' y='144.33333333333331' font-family='Helvetica, Arial, sans-serif' font-size='13' font-weight='400' fill='#1a1a1a' text-anchor='middle'>ast.parse(source)  -&gt;  Abstract Syntax Tree</text>
+<rect x='660' y='200' width='400' height='62' rx='6' fill='#ffffff' stroke='#1a1a1a' stroke-width='1.5'/>
+<text x='860.0' y='226.33333333333334' font-family='Helvetica, Arial, sans-serif' font-size='13' font-weight='400' fill='#1a1a1a' text-anchor='middle'>2. Symbolic Executor + Taint Tracker</text>
+<text x='860.0' y='244.33333333333334' font-family='Helvetica, Arial, sans-serif' font-size='13' font-weight='400' fill='#1a1a1a' text-anchor='middle'>forks on if/else; propagates taint via SymVal env</text>
+<rect x='660' y='300' width='400' height='62' rx='6' fill='#ffffff' stroke='#1a1a1a' stroke-width='1.5'/>
+<text x='860.0' y='326.3333333333333' font-family='Helvetica, Arial, sans-serif' font-size='13' font-weight='400' fill='#1a1a1a' text-anchor='middle'>3. Z3 Encoder + SMT Solver</text>
+<text x='860.0' y='344.3333333333333' font-family='Helvetica, Arial, sans-serif' font-size='13' font-weight='400' fill='#1a1a1a' text-anchor='middle'>path constraints + sink condition  -&gt;  solver.check()</text>
+<line x1='860.0' y1='162' x2='860.0' y2='200' stroke='#333333' stroke-width='1.6' marker-end='url(#arrowhead)'/>
+<line x1='860.0' y1='262' x2='860.0' y2='300' stroke='#333333' stroke-width='1.6' marker-end='url(#arrowhead)'/>
+<line x1='540' y1='120.0' x2='660' y2='131.0' stroke='#333333' stroke-width='1.6' marker-end='url(#arrowhead)'/>
+<rect x='545.77' y='106.5' width='108.46' height='19' fill='#ffffff'/>
+<text x='600.0' y='117.5' font-family='Helvetica, Arial, sans-serif' font-size='11' fill='#333333' text-anchor='middle'>source code (str)</text>
+<line x1='260' y1='220.0' x2='620' y2='180.0' stroke='#333333' stroke-width='1.6' marker-end='url(#arrowhead)' stroke-dasharray='6,4'/>
+<rect x='376.2' y='181.0' width='127.6' height='19' fill='#ffffff'/>
+<text x='440.0' y='192.0' font-family='Helvetica, Arial, sans-serif' font-size='11' fill='#333333' text-anchor='middle'>direct function call</text>
+<rect x='690.0' y='460' width='340' height='60' rx='6' fill='#ffffff' stroke='#1a1a1a' stroke-width='1.5'/>
+<text x='860.0' y='485.3333333333333' font-family='Helvetica, Arial, sans-serif' font-size='13' font-weight='400' fill='#1a1a1a' text-anchor='middle'>Finding objects</text>
+<text x='860.0' y='503.3333333333333' font-family='Helvetica, Arial, sans-serif' font-size='13' font-weight='400' fill='#1a1a1a' text-anchor='middle'>vuln_type, sink, verdict, Z3 model / counterexample</text>
+<line x1='860.0' y1='362' x2='860.0' y2='460' stroke='#333333' stroke-width='1.6' marker-end='url(#arrowhead)'/>
+<rect x='793.01' y='427.0' width='133.98' height='34' fill='#ffffff'/>
+<text x='860.0' y='438.0' font-family='Helvetica, Arial, sans-serif' font-size='11' fill='#333333' text-anchor='middle'>SAT -&gt; counterexample</text>
+<text x='860.0' y='453.0' font-family='Helvetica, Arial, sans-serif' font-size='11' fill='#333333' text-anchor='middle'>UNSAT -&gt; safety proof</text>
+<rect x='760.0' y='560' width='200' height='60' rx='6' fill='#ffffff' stroke='#1a1a1a' stroke-width='1.5'/>
+<text x='860.0' y='585.3333333333334' font-family='Helvetica, Arial, sans-serif' font-size='13' font-weight='400' fill='#1a1a1a' text-anchor='middle'>JSON Report</text>
+<text x='860.0' y='603.3333333333334' font-family='Helvetica, Arial, sans-serif' font-size='13' font-weight='400' fill='#1a1a1a' text-anchor='middle'>findings.json</text>
+<line x1='860.0' y1='520' x2='860.0' y2='560' stroke='#333333' stroke-width='1.6' marker-end='url(#arrowhead)'/>
+<rect x='480.0' y='680' width='220' height='60' rx='6' fill='#ffffff' stroke='#1a1a1a' stroke-width='1.5'/>
+<text x='590.0' y='705.3333333333334' font-family='Helvetica, Arial, sans-serif' font-size='13' font-weight='400' fill='#1a1a1a' text-anchor='middle'>CI/CD Pipeline</text>
+<text x='590.0' y='723.3333333333334' font-family='Helvetica, Arial, sans-serif' font-size='13' font-weight='400' fill='#1a1a1a' text-anchor='middle'>GitHub Actions (pass/fail gate)</text>
+<rect x='750.0' y='680' width='220' height='60' rx='6' fill='#ffffff' stroke='#1a1a1a' stroke-width='1.5'/>
+<text x='860.0' y='705.3333333333334' font-family='Helvetica, Arial, sans-serif' font-size='13' font-weight='400' fill='#1a1a1a' text-anchor='middle'>Dashboard Rendering</text>
+<text x='860.0' y='723.3333333333334' font-family='Helvetica, Arial, sans-serif' font-size='13' font-weight='400' fill='#1a1a1a' text-anchor='middle'>highlighted lines + Z3 model</text>
+<rect x='1020.0' y='680' width='220' height='60' rx='6' fill='#ffffff' stroke='#1a1a1a' stroke-width='1.5'/>
+<text x='1130.0' y='705.3333333333334' font-family='Helvetica, Arial, sans-serif' font-size='13' font-weight='400' fill='#1a1a1a' text-anchor='middle'>Console Report</text>
+<text x='1130.0' y='723.3333333333334' font-family='Helvetica, Arial, sans-serif' font-size='13' font-weight='400' fill='#1a1a1a' text-anchor='middle'>human-readable summary</text>
+<line x1='760.0' y1='590.0' x2='700.0' y2='710.0' stroke='#333333' stroke-width='1.6' marker-end='url(#arrowhead)'/>
+<line x1='860.0' y1='620' x2='860.0' y2='680' stroke='#333333' stroke-width='1.6' marker-end='url(#arrowhead)'/>
+<line x1='960.0' y1='590.0' x2='1020.0' y2='710.0' stroke='#333333' stroke-width='1.6' marker-end='url(#arrowhead)'/>
+<line x1='40' y1='800' x2='80' y2='800' stroke='#333333' stroke-width='1.6' marker-end='url(#arrowhead)'/>
+<text x='88' y='804' font-family='Helvetica, Arial, sans-serif' font-size='12' fill='#333333'>data flow</text>
+<line x1='200' y1='800' x2='240' y2='800' stroke='#333333' stroke-width='1.6' stroke-dasharray='6,4' marker-end='url(#arrowhead)'/>
+<text x='248' y='804' font-family='Helvetica, Arial, sans-serif' font-size='12' fill='#333333'>alternate entry path (CLI)</text>
+</svg>
