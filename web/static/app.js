@@ -33,12 +33,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     codeInput.addEventListener('drop', (e) => {
-        e.preventDefault();
         codeInput.style.borderColor = '';
-        
+
         const file = e.dataTransfer.files[0];
-        if (!file || !file.name.endsWith('.py')) return;
-        
+        if (!file) return; // no file dropped (e.g. plain text drag) -- let the browser's native drop-to-insert behavior run
+        e.preventDefault();
+
+        if (!file.name.endsWith('.py')) return;
+
         const reader = new FileReader();
         reader.onload = (event) => {
             codeInput.value = event.target.result;

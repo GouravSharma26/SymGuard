@@ -19,9 +19,9 @@ def index():
 def analyze():
     # Handle both JSON and Multipart Form requests
     if request.is_json:
-        data = request.get_json()
-        code = data.get('code', '')
-        filename = data.get('filename', 'app.py')
+        data = request.get_json(silent=True) or {}
+        code = data.get('code', '') if isinstance(data, dict) else ''
+        filename = data.get('filename', 'app.py') if isinstance(data, dict) else 'app.py'
     else:
         if 'file' in request.files:
             file = request.files['file']
@@ -51,4 +51,4 @@ def analyze():
         return jsonify({"error": f"Analysis failed: {str(e)}"}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(debug=False, use_reloader=True, port=5000)
