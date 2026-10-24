@@ -29,9 +29,17 @@ jobs:
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
 
+      - name: Fetch SARIF 2.1.0 JSON Schema
+        run: |
+          python scripts/fetch_sarif_schema.py
+
       - name: Run regression test suite (pytest)
         run: |
           pytest -v
+
+      - name: Run reproducible benchmark
+        run: |
+          python benchmark/run_benchmark.py
 
       - name: Generate report artifacts (JSON & SARIF)
         if: always()
@@ -41,8 +49,9 @@ jobs:
           python analyzer.py examples/command_injection.py --format sarif --output reports/command_injection.sarif
           python analyzer.py examples/out_of_bounds.py --format json --output reports/out_of_bounds.json
           python analyzer.py examples/out_of_bounds.py --format sarif --output reports/out_of_bounds.sarif
+          cp benchmark/results.json reports/benchmark_results.json
 
-      - name: Upload analysis reports
+      - name: Upload analysis reports and benchmark artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:

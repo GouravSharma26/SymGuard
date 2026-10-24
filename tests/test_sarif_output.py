@@ -1,8 +1,27 @@
 """
 Tests for SARIF 2.1.0 output formatting, schema compliance, and policy.
+Includes validation against the official OASIS SARIF 2.1.0 JSON Schema using jsonschema.
 """
+import os
 import json
+import pytest
+import jsonschema
 from analyzer import Analyzer, findings_to_sarif
+
+SCHEMA_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "schemas", "sarif-schema-2.1.0.json"))
+
+
+def validate_against_official_sarif_schema(sarif_dict):
+    """Validate a SARIF dictionary against the official OASIS SARIF 2.1.0 JSON Schema."""
+    if not os.path.exists(SCHEMA_PATH):
+        # Auto-fetch if not present
+        from scripts.fetch_sarif_schema import fetch_schema
+        fetch_schema()
+    assert os.path.exists(SCHEMA_PATH), f"SARIF schema not found at {SCHEMA_PATH}"
+    with open(SCHEMA_PATH, "r", encoding="utf-8") as f:
+        schema = json.load(f)
+    jsonschema.validate(instance=sarif_dict, schema=schema)
+
 
 def test_sarif_output_structure():
     code = """
@@ -48,6 +67,9 @@ os.system(cmd)
     assert "VULNERABLE" in res["properties"]["verdict"]
     assert res["properties"]["sink"] == "os.system(...)"
 
+    # Official schema validation
+    validate_against_official_sarif_schema(sarif)
+
 
 def test_sarif_safe_omitted_by_default_included_opt_in():
     code = """
@@ -63,11 +85,13 @@ if idx >= 0:
     # Default: safe findings should NOT create alerts in SARIF
     sarif_default = findings_to_sarif("safe_sample.py", findings, include_safe=False)
     assert len(sarif_default["runs"][0]["results"]) == 0
+    validate_against_official_sarif_schema(sarif_default)
 
     # Opt-in: include_safe=True will emit note-level results
     sarif_opt_in = findings_to_sarif("safe_sample.py", findings, include_safe=True)
     assert len(sarif_opt_in["runs"][0]["results"]) >= 1
     assert sarif_opt_in["runs"][0]["results"][0]["level"] == "note"
+    validate_against_official_sarif_schema(sarif_opt_in)
 
 
 def test_sarif_empty_findings_produces_valid_structure():
@@ -75,3 +99,4 @@ def test_sarif_empty_findings_produces_valid_structure():
     assert sarif["version"] == "2.1.0"
     assert len(sarif["runs"]) == 1
     assert sarif["runs"][0]["results"] == []
+    validate_against_official_sarif_schema(sarif)
