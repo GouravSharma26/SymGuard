@@ -1,0 +1,259 @@
+{
+  "benchmark_version": "1.0.0",
+  "timestamp": "2026-10-24T07:30:30Z",
+  "environment": {
+    "os": "Windows-11-10.0.26300-SP0",
+    "python": "3.12.6",
+    "processor": "Intel64 Family 6 Model 141 Stepping 1, GenuineIntel"
+  },
+  "metrics": {
+    "total_cases": 11,
+    "in_scope_cases": 8,
+    "out_of_scope_cases": 3,
+    "true_positives": 4,
+    "false_positives": 0,
+    "true_negatives": 4,
+    "false_negatives": 0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1_score": 1.0,
+    "accuracy": 1.0,
+    "analysis_coverage": 0.7273,
+    "total_elapsed_ms": 30.03
+  },
+  "category_breakdown": {
+    "OS Command Injection": {
+      "total": 3,
+      "correct": 3
+    },
+    "Code Injection": {
+      "total": 1,
+      "correct": 1
+    },
+    "SQL Injection": {
+      "total": 2,
+      "correct": 2
+    },
+    "Out-of-Bounds Indexing": {
+      "total": 2,
+      "correct": 2
+    },
+    "Class / Object Dispatch": {
+      "total": 1,
+      "correct": 1
+    },
+    "Regex Guard": {
+      "total": 1,
+      "correct": 1
+    },
+    "Loop Bound Exceeded": {
+      "total": 1,
+      "correct": 1
+    }
+  },
+  "results": [
+    {
+      "case_id": "BENCH-001",
+      "path": "cases/vulnerable/vuln_cmd_injection.py",
+      "category": "OS Command Injection",
+      "expected_outcome": "vulnerable",
+      "detected_outcome": "vulnerable",
+      "is_correct": true,
+      "elapsed_ms": 7.74,
+      "findings": [
+        {
+          "rule_id": "SYM001",
+          "vuln_type": "OS Command Injection",
+          "verdict": "VULNERABLE (proven reachable by Z3)",
+          "severity": "high",
+          "line": 3
+        }
+      ]
+    },
+    {
+      "case_id": "BENCH-002",
+      "path": "cases/vulnerable/vuln_code_injection.py",
+      "category": "Code Injection",
+      "expected_outcome": "vulnerable",
+      "detected_outcome": "vulnerable",
+      "is_correct": true,
+      "elapsed_ms": 1.35,
+      "findings": [
+        {
+          "rule_id": "SYM002",
+          "vuln_type": "Code Injection",
+          "verdict": "VULNERABLE (proven reachable by Z3)",
+          "severity": "high",
+          "line": 2
+        }
+      ]
+    },
+    {
+      "case_id": "BENCH-003",
+      "path": "cases/vulnerable/vuln_sql_injection.py",
+      "category": "SQL Injection",
+      "expected_outcome": "vulnerable",
+      "detected_outcome": "vulnerable",
+      "is_correct": true,
+      "elapsed_ms": 1.25,
+      "findings": [
+        {
+          "rule_id": "SYM003",
+          "vuln_type": "SQL Injection",
+          "verdict": "VULNERABLE (proven reachable by Z3)",
+          "severity": "high",
+          "line": 3
+        }
+      ]
+    },
+    {
+      "case_id": "BENCH-004",
+      "path": "cases/vulnerable/vuln_oob_index.py",
+      "category": "Out-of-Bounds Indexing",
+      "expected_outcome": "vulnerable",
+      "detected_outcome": "vulnerable",
+      "is_correct": true,
+      "elapsed_ms": 5.23,
+      "findings": [
+        {
+          "rule_id": "SYM004",
+          "vuln_type": "Out-of-Bounds Index (buffer-overflow analog)",
+          "verdict": "VULNERABLE (proven reachable by Z3)",
+          "severity": "high",
+          "line": 3
+        }
+      ]
+    },
+    {
+      "case_id": "BENCH-005",
+      "path": "cases/safe/safe_cmd_subprocess.py",
+      "category": "OS Command Injection",
+      "expected_outcome": "safe",
+      "detected_outcome": "clean",
+      "is_correct": true,
+      "elapsed_ms": 0.45,
+      "findings": []
+    },
+    {
+      "case_id": "BENCH-006",
+      "path": "cases/safe/safe_sql_parameterized.py",
+      "category": "SQL Injection",
+      "expected_outcome": "safe",
+      "detected_outcome": "clean",
+      "is_correct": true,
+      "elapsed_ms": 0.35,
+      "findings": []
+    },
+    {
+      "case_id": "BENCH-007",
+      "path": "cases/safe/safe_bounds_check.py",
+      "category": "Out-of-Bounds Indexing",
+      "expected_outcome": "safe",
+      "detected_outcome": "safe",
+      "is_correct": true,
+      "elapsed_ms": 3.7,
+      "findings": [
+        {
+          "rule_id": "SYM004",
+          "vuln_type": "Out-of-Bounds Index (buffer-overflow analog)",
+          "verdict": "SAFE (Z3 proved out-of-bounds is infeasible on this path)",
+          "severity": "safe",
+          "line": 5
+        }
+      ]
+    },
+    {
+      "case_id": "BENCH-008",
+      "path": "cases/safe/safe_infeasible_branch.py",
+      "category": "OS Command Injection",
+      "expected_outcome": "safe",
+      "detected_outcome": "safe",
+      "is_correct": true,
+      "elapsed_ms": 4.71,
+      "findings": [
+        {
+          "rule_id": "SYM001",
+          "vuln_type": "OS Command Injection",
+          "verdict": "SAFE (Z3 proved this path is infeasible)",
+          "severity": "safe",
+          "line": 6
+        }
+      ]
+    },
+    {
+      "case_id": "BENCH-009",
+      "path": "cases/out_of_scope/out_of_scope_class_dispatch.py",
+      "category": "Class / Object Dispatch",
+      "expected_outcome": "out_of_scope",
+      "detected_outcome": "vulnerable",
+      "is_correct": true,
+      "elapsed_ms": 1.71,
+      "findings": [
+        {
+          "rule_id": "SYM001",
+          "vuln_type": "OS Command Injection",
+          "verdict": "VULNERABLE (proven reachable by Z3)",
+          "severity": "high",
+          "line": 10
+        }
+      ]
+    },
+    {
+      "case_id": "BENCH-010",
+      "path": "cases/out_of_scope/out_of_scope_regex_sanitizer.py",
+      "category": "Regex Guard",
+      "expected_outcome": "out_of_scope",
+      "detected_outcome": "vulnerable",
+      "is_correct": true,
+      "elapsed_ms": 1.06,
+      "findings": [
+        {
+          "rule_id": "SYM001",
+          "vuln_type": "OS Command Injection",
+          "verdict": "VULNERABLE (proven reachable by Z3)",
+          "severity": "high",
+          "line": 8
+        }
+      ]
+    },
+    {
+      "case_id": "BENCH-011",
+      "path": "cases/out_of_scope/out_of_scope_deep_loop.py",
+      "category": "Loop Bound Exceeded",
+      "expected_outcome": "out_of_scope",
+      "detected_outcome": "safe",
+      "is_correct": true,
+      "elapsed_ms": 2.11,
+      "findings": [
+        {
+          "rule_id": "SYM001",
+          "vuln_type": "OS Command Injection",
+          "verdict": "SAFE (Z3 proved this path is infeasible)",
+          "severity": "safe",
+          "line": 7
+        },
+        {
+          "rule_id": "SYM001",
+          "vuln_type": "OS Command Injection",
+          "verdict": "SAFE (Z3 proved this path is infeasible)",
+          "severity": "safe",
+          "line": 7
+        },
+        {
+          "rule_id": "SYM001",
+          "vuln_type": "OS Command Injection",
+          "verdict": "SAFE (Z3 proved this path is infeasible)",
+          "severity": "safe",
+          "line": 7
+        },
+        {
+          "rule_id": "SYM901",
+          "vuln_type": "[info] Loop unrolling bound",
+          "verdict": "NOTE: analysis of this loop covers only the first 3 iterations; absence of findings above is not a proof for arbitrarily many iterations",
+          "severity": "info",
+          "line": 4
+        }
+      ]
+    }
+  ]
+}

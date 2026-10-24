@@ -43,6 +43,9 @@ mis-modeled -- soundness over coverage.
 """
 
 import ast
+import datetime
+import json as json_mod
+import os
 import sys
 import textwrap
 from dataclasses import dataclass, field
@@ -107,6 +110,66 @@ SINK_SQL_EXEC = {"execute", "executescript"}  # matched as attribute call *.exec
 # reported explicitly to the user rather than silently overclaimed.
 UNROLL_DEPTH = 3
 
+# --------------------------------------------------------------------------
+# Rule Catalog (Stable IDs SYM001-SYM004, SYM901)
+# --------------------------------------------------------------------------
+
+RULE_CATALOG = {
+    "SYM001": {
+        "id": "SYM001",
+        "name": "OS Command Injection",
+        "category": "OS Command Injection",
+        "short_description": "Attacker-controlled input reaches an OS command execution sink.",
+        "full_description": "Untrusted input reaches functions such as os.system, os.popen, or subprocess with shell=True without adequate sanitization or constraints.",
+        "default_severity": "high",
+        "cwe": "CWE-78",
+    },
+    "SYM002": {
+        "id": "SYM002",
+        "name": "Code Injection",
+        "category": "Code Injection",
+        "short_description": "Attacker-controlled input reaches dynamic code execution.",
+        "full_description": "Untrusted input reaches eval() or exec(), allowing arbitrary Python code execution.",
+        "default_severity": "high",
+        "cwe": "CWE-95",
+    },
+    "SYM003": {
+        "id": "SYM003",
+        "name": "SQL Injection",
+        "category": "SQL Injection",
+        "short_description": "Attacker-controlled input reaches an unparameterized SQL query execution.",
+        "full_description": "Untrusted input is concatenated into a SQL statement executed by database cursor without parameterization.",
+        "default_severity": "high",
+        "cwe": "CWE-89",
+    },
+    "SYM004": {
+        "id": "SYM004",
+        "name": "Tainted Out-of-Bounds Indexing",
+        "category": "Out-of-Bounds Index (buffer-overflow analog)",
+        "short_description": "Attacker-controlled index can access a sequence out of bounds.",
+        "full_description": "An untrusted integer index used in a subscript operation is proven satisfiable outside the list bounds [0, len(list)).",
+        "default_severity": "high",
+        "cwe": "CWE-129",
+    },
+    "SYM901": {
+        "id": "SYM901",
+        "name": "Loop Unrolling Bound Note",
+        "category": "[info] Loop unrolling bound",
+        "short_description": "Analysis of loop is bounded by configured iteration depth.",
+        "full_description": f"Analysis of this loop covers only the first {UNROLL_DEPTH} iterations; absence of findings is not a proof for arbitrarily many iterations.",
+        "default_severity": "info",
+        "cwe": "",
+    },
+}
+
+VULN_TYPE_TO_RULE = {
+    "OS Command Injection": "SYM001",
+    "Code Injection": "SYM002",
+    "SQL Injection": "SYM003",
+    "Out-of-Bounds Index (buffer-overflow analog)": "SYM004",
+    "[info] Loop unrolling bound": "SYM901",
+}
+
 
 @dataclass
 class Finding:
@@ -119,6 +182,17 @@ class Finding:
     model: Optional[str] = None
     line: Optional[int] = None       # machine-readable line number, for UI highlighting
     severity: str = "info"           # "high" | "safe" | "unknown" | "info"
+    rule_id: Optional[str] = None
+    rule_name: Optional[str] = None
+    column: Optional[int] = None
+    uri: Optional[str] = None
+    message: Optional[str] = None
+
+    def __post_init__(self):
+        if not self.rule_id:
+            self.rule_id = VULN_TYPE_TO_RULE.get(self.vuln_type, "SYM000")
+        if not self.rule_name and self.rule_id in RULE_CATALOG:
+            self.rule_name = RULE_CATALOG[self.rule_id]["name"]
 
 
 # --------------------------------------------------------------------------
@@ -138,6 +212,11 @@ def severity_for(verdict: str) -> str:
 class Analyzer:
     def __init__(self, filename: str):
         self.filename = filename
+        try:
+            rel = os.path.relpath(filename, os.getcwd())
+            self.relative_uri = rel.replace("\\", "/")
+        except Exception:
+            self.relative_uri = str(filename).replace("\\", "/")
         self.findings: list[Finding] = []
 
     # ---- expression evaluation -------------------------------------------------
@@ -347,16 +426,22 @@ class Analyzer:
             result = solver.check()
             loc = f"{func_ctx}:line {getattr(sub, 'lineno', '?')}"
             idx_txt = ast.unparse(sub.slice) if hasattr(ast, "unparse") else "idx"
+            col = getattr(sub, 'col_offset', None)
+            col_1idx = (col + 1) if col is not None else None
+            line_no = getattr(sub, 'lineno', None)
             if result == z3.sat:
                 model = solver.model()
                 verdict = "VULNERABLE (proven reachable by Z3)"
                 model_str = str(model)
+                msg = f"Proven reachable out-of-bounds indexing on '{base_name}' with tainted index."
             elif result == z3.unsat:
                 verdict = "SAFE (Z3 proved out-of-bounds is infeasible on this path)"
                 model_str = None
+                msg = f"Proven safe from out-of-bounds indexing on '{base_name}': path constraints enforce valid bounds."
             else:
                 verdict = "UNKNOWN"
                 model_str = None
+                msg = f"Undecided bounds safety on '{base_name}'."
             self.findings.append(Finding(
                 vuln_type="Out-of-Bounds Index (buffer-overflow analog)",
                 location=loc,
@@ -365,8 +450,13 @@ class Analyzer:
                 path_constraints_desc=" AND ".join(path_desc) if path_desc else "(no branch conditions)",
                 verdict=verdict,
                 model=model_str,
-                line=getattr(sub, 'lineno', None),
+                line=line_no,
                 severity=severity_for(verdict),
+                rule_id="SYM004",
+                rule_name=RULE_CATALOG["SYM004"]["name"],
+                column=col_1idx,
+                uri=self.relative_uri,
+                message=msg,
             ))
 
     # ---- bounded loop unrolling ---------------------------------------------
@@ -411,9 +501,13 @@ class Analyzer:
             iter_desc = path_desc + [f"(loop body, unrolled iteration {i + 1}/{UNROLL_DEPTH})"]
             self.exec_block(stmt.body, env, path, iter_desc, func_ctx, copy_env=False)
 
+        line_no = getattr(stmt, 'lineno', None)
+        col = getattr(stmt, 'col_offset', None)
+        col_1idx = (col + 1) if col is not None else None
+
         self.findings.append(Finding(
             vuln_type="[info] Loop unrolling bound",
-            location=f"{func_ctx}:line {getattr(stmt, 'lineno', '?')}",
+            location=f"{func_ctx}:line {line_no if line_no is not None else '?'}",
             sink="(loop body)",
             tainted_source="n/a",
             path_constraints_desc=f"unrolled {UNROLL_DEPTH} iterations",
@@ -421,8 +515,13 @@ class Analyzer:
                     f"iterations; absence of findings above is not a proof for "
                     f"arbitrarily many iterations",
             model=None,
-            line=getattr(stmt, 'lineno', None),
+            line=line_no,
             severity="info",
+            rule_id="SYM901",
+            rule_name=RULE_CATALOG["SYM901"]["name"],
+            column=col_1idx,
+            uri=self.relative_uri,
+            message=f"NOTE: analysis of this loop covers only the first {UNROLL_DEPTH} iterations.",
         ))
 
     def exec_block(self, stmts, env: dict, path: list, path_desc: list, func_ctx: str,
@@ -432,11 +531,21 @@ class Analyzer:
         # env in place so state persists across iterations and after the loop.
         for stmt in stmts:
             # Only scan the statement's own expressions for subscripts here;
-            # nested blocks (If bodies) are scanned recursively once their
-            # branch's path constraint has been pushed, so we don't check
+            # nested blocks (If, While, For bodies) are scanned recursively once their
+            # branch/iteration path constraint has been pushed, so we don't check
             # them prematurely with the wrong (pre-branch) path.
-            scan_target = stmt.test if isinstance(stmt, ast.If) else stmt
-            self.check_subscripts_in(scan_target, env, path, path_desc, func_ctx)
+            if isinstance(stmt, ast.If):
+                scan_target = stmt.test
+            elif isinstance(stmt, ast.While):
+                scan_target = stmt.test
+            elif isinstance(stmt, ast.For):
+                scan_target = stmt.iter
+            elif isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                scan_target = None
+            else:
+                scan_target = stmt
+            if scan_target is not None:
+                self.check_subscripts_in(scan_target, env, path, path_desc, func_ctx)
 
             if isinstance(stmt, ast.Assign) and len(stmt.targets) == 1 \
                     and isinstance(stmt.targets[0], ast.Name):
@@ -539,16 +648,25 @@ class Analyzer:
         solver.add(constraint)
         result = solver.check()
 
+        rule_id = VULN_TYPE_TO_RULE.get(vuln_type, "SYM000")
+        rule_meta = RULE_CATALOG.get(rule_id, {})
+        rule_name = rule_meta.get("name", vuln_type)
+        col = getattr(call, "col_offset", None)
+        col_1idx = (col + 1) if col is not None else None
+
         if result == z3.sat:
             model = solver.model()
             verdict = "VULNERABLE (proven reachable by Z3)"
             model_str = str(model) if len(model) else "(no path constraints -- always reachable)"
+            msg = f"Proven reachable {vuln_type} at {fname}(...) via {tainted_arg.source or 'attacker-controlled input'}."
         elif result == z3.unsat:
             verdict = "SAFE (Z3 proved this path is infeasible)"
             model_str = None
+            msg = f"Proven safe from {vuln_type} at {fname}(...): path constraints are mathematically infeasible."
         else:
             verdict = "UNKNOWN (Z3 could not decide)"
             model_str = None
+            msg = f"Undecided {vuln_type} at {fname}(...): solver reached unknown."
 
         self.findings.append(Finding(
             vuln_type=vuln_type,
@@ -560,6 +678,11 @@ class Analyzer:
             model=model_str,
             line=line,
             severity=severity_for(verdict),
+            rule_id=rule_id,
+            rule_name=rule_name,
+            column=col_1idx,
+            uri=self.relative_uri,
+            message=msg,
         ))
 
         # additionally, check bounds-safety for subscript args passed into
@@ -625,16 +748,21 @@ def print_report(filename, findings):
 
 
 def findings_to_json(filename, findings):
-    """Structured, CI/CD-friendly report. Shape is stable/versioned so a
-    GitHub Actions step (or a future web dashboard) can consume it directly:
-    each entry carries a `line` for source highlighting and a `severity`
-    (high | safe | unknown | info) for pass/fail gating."""
-    import datetime
+    """Structured, CI/CD-friendly report. Shape is stable and backwards-compatible:
+    includes original keys (line, severity, vuln_type, location, sink, tainted_source,
+    path_condition, verdict, z3_counterexample) along with stable rule IDs, column numbers,
+    messages, and relative URIs."""
     real = [f for f in findings if f.severity != "info"]
+    try:
+        rel_target = os.path.relpath(filename, os.getcwd()) if os.path.isabs(filename) else filename
+        rel_target = rel_target.replace("\\", "/")
+    except Exception:
+        rel_target = str(filename).replace("\\", "/")
+
     return {
-        "schema_version": "1.0",
-        "tool": "vuln_analyzer",
-        "target": filename,
+        "schema_version": "1.1",
+        "tool": "SymGuard",
+        "target": rel_target,
         "generated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         "summary": {
             "vulnerable": sum(1 for f in real if f.severity == "high"),
@@ -644,14 +772,19 @@ def findings_to_json(filename, findings):
         },
         "findings": [
             {
+                "rule_id": f.rule_id or "SYM000",
+                "rule_name": f.rule_name or f.vuln_type,
                 "vuln_type": f.vuln_type,
                 "location": f.location,
                 "line": f.line,
+                "column": f.column,
+                "uri": f.uri or rel_target,
                 "sink": f.sink,
                 "tainted_source": f.tainted_source,
                 "path_condition": f.path_constraints_desc,
                 "verdict": f.verdict,
                 "severity": f.severity,
+                "message": f.message or f"{f.vuln_type} - {f.verdict}",
                 "z3_counterexample": f.model,
             }
             for f in findings
@@ -659,31 +792,168 @@ def findings_to_json(filename, findings):
     }
 
 
-def main():
+def findings_to_sarif(filename, findings, include_safe: bool = False):
+    """Generate a SARIF 2.1.0 compliant report."""
+    try:
+        rel_target = os.path.relpath(filename, os.getcwd()) if os.path.isabs(filename) else filename
+        rel_target = rel_target.replace("\\", "/")
+    except Exception:
+        rel_target = str(filename).replace("\\", "/")
+
+    # Rule definitions for driver
+    rules_list = []
+    rule_indices = {}
+    for rule_id, rule_meta in RULE_CATALOG.items():
+        if rule_id.startswith("SYM9"):
+            continue  # notes/informational
+        rule_indices[rule_id] = len(rules_list)
+        rules_list.append({
+            "id": rule_id,
+            "name": rule_meta["name"].replace(" ", "").replace("-", ""),
+            "shortDescription": {
+                "text": rule_meta["short_description"]
+            },
+            "fullDescription": {
+                "text": rule_meta["full_description"]
+            },
+            "defaultConfiguration": {
+                "level": "error" if rule_meta.get("default_severity") == "high" else "note"
+            },
+            "helpUri": f"https://github.com/GouravSharma26/SymGuard#{rule_id.lower()}",
+            "properties": {
+                "tags": ["security", "static-analysis"],
+                "cwe": rule_meta.get("cwe", "")
+            }
+        })
+
+    results = []
+    for f in findings:
+        # Determine SARIF result level
+        if f.severity == "high":
+            level = "error"
+        elif f.severity == "unknown":
+            level = "warning"
+        elif f.severity == "safe":
+            if not include_safe:
+                continue
+            level = "note"
+        elif f.severity == "info":
+            if not include_safe:
+                continue
+            level = "note"
+        else:
+            level = "warning"
+
+        rule_id = f.rule_id or "SYM000"
+        rule_idx = rule_indices.get(rule_id)
+
+        location_entry = {
+            "physicalLocation": {
+                "artifactLocation": {
+                    "uri": f.uri or rel_target,
+                    "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                    "startLine": f.line if f.line is not None else 1
+                }
+            }
+        }
+        if f.column is not None:
+            location_entry["physicalLocation"]["region"]["startColumn"] = f.column
+
+        properties_entry = {
+            "verdict": f.verdict,
+            "sink": f.sink,
+            "taintedSource": f.tainted_source,
+            "pathConstraints": f.path_constraints_desc,
+            "severity": f.severity,
+        }
+        if f.model:
+            properties_entry["z3Counterexample"] = f.model
+
+        result_obj = {
+            "ruleId": rule_id,
+            "level": level,
+            "message": {
+                "text": f.message or f"{f.vuln_type}: {f.verdict}"
+            },
+            "locations": [location_entry],
+            "properties": properties_entry,
+        }
+        if rule_idx is not None:
+            result_obj["ruleIndex"] = rule_idx
+
+        results.append(result_obj)
+
+    return {
+        "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+        "version": "2.1.0",
+        "runs": [
+            {
+                "tool": {
+                    "driver": {
+                        "name": "SymGuard",
+                        "semanticVersion": "0.2.0",
+                        "informationUri": "https://github.com/GouravSharma26/SymGuard",
+                        "rules": rules_list
+                    }
+                },
+                "artifacts": [
+                    {
+                        "location": {
+                            "uri": rel_target
+                        }
+                    }
+                ],
+                "results": results
+            }
+        ]
+    }
+
+
+def main(argv=None):
     import argparse
-    import json as json_mod
 
     parser = argparse.ArgumentParser(
         description="Prove (not guess) reachable vulnerabilities via AST symbolic execution + Z3.")
     parser.add_argument("source", help="Path to the Python source file to analyze")
-    parser.add_argument("--format", choices=["text", "json"], default="text",
-                         help="Output format (default: text). Use 'json' for CI/CD pipelines "
-                              "or a web dashboard to consume.")
+    parser.add_argument("--format", choices=["text", "json", "sarif"], default="text",
+                         help="Output format (default: text). Use 'json' or 'sarif' for CI/CD pipelines.")
     parser.add_argument("--output", "-o", metavar="PATH",
                          help="Write the report to this file instead of stdout")
     parser.add_argument("--fail-on-vulnerable", action="store_true",
                          help="Exit with a non-zero status if any VULNERABLE finding is proven "
                               "reachable -- for use as a GitHub Actions / CI gate")
-    args = parser.parse_args()
+    parser.add_argument("--include-safe", action="store_true",
+                         help="Include proven SAFE results in SARIF output (by default, only actionable findings are emitted)")
+    args = parser.parse_args(argv)
 
-    with open(args.source) as f:
-        src = f.read()
+    if not os.path.exists(args.source):
+        sys.stderr.write(f"Error: Target file '{args.source}' not found.\n")
+        return 2
 
-    analyzer = Analyzer(args.source)
-    findings = analyzer.analyze_source(src)
+    try:
+        with open(args.source, "r", encoding="utf-8") as f:
+            src = f.read()
+    except Exception as e:
+        sys.stderr.write(f"Error: Could not read '{args.source}': {e}\n")
+        return 2
+
+    try:
+        analyzer = Analyzer(args.source)
+        findings = analyzer.analyze_source(src)
+    except SyntaxError as e:
+        sys.stderr.write(f"Error: Syntax error parsing '{args.source}': {e}\n")
+        return 2
+    except Exception as e:
+        sys.stderr.write(f"Error: Analysis failed for '{args.source}': {e}\n")
+        return 2
 
     if args.format == "json":
         report = findings_to_json(args.source, findings)
+        text = json_mod.dumps(report, indent=2)
+    elif args.format == "sarif":
+        report = findings_to_sarif(args.source, findings, include_safe=args.include_safe)
         text = json_mod.dumps(report, indent=2)
     else:
         import io
@@ -697,21 +967,25 @@ def main():
         text = buf.getvalue()
 
     if args.output:
-        with open(args.output, "w") as f:
-            f.write(text)
-        print(f"Report written to {args.output}")
+        try:
+            with open(args.output, "w", encoding="utf-8") as f:
+                f.write(text)
+            print(f"Report written to {args.output}")
+        except Exception as e:
+            sys.stderr.write(f"Error writing output to '{args.output}': {e}\n")
+            return 2
     else:
         print(text)
 
     vulnerable = any(f.severity == "high" for f in findings)
     if args.fail_on_vulnerable and vulnerable:
-        sys.exit(1)
-    sys.exit(0)
+        return 1
+    return 0
 
 
 if __name__ == "__main__":
     try:
-        main()
+        sys.exit(main())
     except BrokenPipeError:
         # e.g. `analyzer.py x.py | head` -- the reader closed early; exit
         # quietly instead of printing a Python traceback for a non-error.

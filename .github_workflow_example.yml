@@ -1,9 +1,7 @@
-name: Vulnerability Analysis
-
-# Runs the Z3-backed static analyzer on every push/PR and fails the build
-# if any vulnerability is PROVEN reachable (not just pattern-matched).
-# The JSON report is uploaded as a build artifact either way, so a proven
-# safe result or an UNKNOWN one is still visible for review.
+# Example GitHub Actions Workflow Template for downstream projects
+# Copy this file to .github/workflows/symguard.yml in your own repository
+# to run SymGuard on pull requests and fail the build if vulnerabilities are proven.
+# Replace `target_script.py` below with your entrypoint file.
 
 on:
   push:
@@ -28,7 +26,7 @@ jobs:
         # --fail-on-vulnerable makes this step (and therefore the job)
         # exit non-zero if Z3 proves any sink reachable -- that's the gate.
         run: |
-          python3 analyzer.py app.py \
+          python3 analyzer.py target_script.py \
             --format json \
             --output findings.json \
             --fail-on-vulnerable
