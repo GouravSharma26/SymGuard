@@ -1,0 +1,105 @@
+{
+  "benchmark_version": "1.0.0",
+  "description": "Reproducible benchmark corpus for SymGuard static analyzer",
+  "cases": [
+    {
+      "case_id": "BENCH-001",
+      "path": "cases/vulnerable/vuln_cmd_injection.py",
+      "category": "OS Command Injection",
+      "expected_outcome": "vulnerable",
+      "expected_rule": "SYM001",
+      "rationale": "Direct concatenation of untrusted stdin input into os.system call.",
+      "attribution": "Synthetic fixture designed for SymGuard evaluation"
+    },
+    {
+      "case_id": "BENCH-002",
+      "path": "cases/vulnerable/vuln_code_injection.py",
+      "category": "Code Injection",
+      "expected_outcome": "vulnerable",
+      "expected_rule": "SYM002",
+      "rationale": "Untrusted stdin input directly passed to eval().",
+      "attribution": "Synthetic fixture designed for SymGuard evaluation"
+    },
+    {
+      "case_id": "BENCH-003",
+      "path": "cases/vulnerable/vuln_sql_injection.py",
+      "category": "SQL Injection",
+      "expected_outcome": "vulnerable",
+      "expected_rule": "SYM003",
+      "rationale": "String-concatenated raw SQL query passed to database cursor.execute().",
+      "attribution": "Synthetic fixture designed for SymGuard evaluation"
+    },
+    {
+      "case_id": "BENCH-004",
+      "path": "cases/vulnerable/vuln_oob_index.py",
+      "category": "Out-of-Bounds Indexing",
+      "expected_outcome": "vulnerable",
+      "expected_rule": "SYM004",
+      "rationale": "Unguarded tainted index into a tracked list is proven satisfiable outside list bounds.",
+      "attribution": "Synthetic fixture designed for SymGuard evaluation"
+    },
+    {
+      "case_id": "BENCH-005",
+      "path": "cases/safe/safe_cmd_subprocess.py",
+      "category": "OS Command Injection",
+      "expected_outcome": "safe",
+      "expected_rule": "SYM001",
+      "rationale": "List-form argument invocation of subprocess without shell=True prevents command injection.",
+      "attribution": "Synthetic fixture designed for SymGuard evaluation"
+    },
+    {
+      "case_id": "BENCH-006",
+      "path": "cases/safe/safe_sql_parameterized.py",
+      "category": "SQL Injection",
+      "expected_outcome": "safe",
+      "expected_rule": "SYM003",
+      "rationale": "Parameterized query passing parameters separately from query string is the standard defense.",
+      "attribution": "Synthetic fixture designed for SymGuard evaluation"
+    },
+    {
+      "case_id": "BENCH-007",
+      "path": "cases/safe/safe_bounds_check.py",
+      "category": "Out-of-Bounds Indexing",
+      "expected_outcome": "safe",
+      "expected_rule": "SYM004",
+      "rationale": "Conditional guards idx >= 0 and idx < len(items) proven by Z3 to make out-of-bounds infeasible (UNSAT).",
+      "attribution": "Synthetic fixture designed for SymGuard evaluation"
+    },
+    {
+      "case_id": "BENCH-008",
+      "path": "cases/safe/safe_infeasible_branch.py",
+      "category": "OS Command Injection",
+      "expected_outcome": "safe",
+      "expected_rule": "SYM001",
+      "rationale": "Contradictory path conditions (x > 100 AND x < 10) proven infeasible (UNSAT) before reaching sink.",
+      "attribution": "Synthetic fixture designed for SymGuard evaluation"
+    },
+    {
+      "case_id": "BENCH-009",
+      "path": "cases/out_of_scope/out_of_scope_class_dispatch.py",
+      "category": "Class / Object Dispatch",
+      "expected_outcome": "out_of_scope",
+      "expected_rule": null,
+      "rationale": "Class instantiations and method dispatches are intentionally outside the modeled AST subset.",
+      "attribution": "Synthetic fixture designed for SymGuard evaluation"
+    },
+    {
+      "case_id": "BENCH-010",
+      "path": "cases/out_of_scope/out_of_scope_regex_sanitizer.py",
+      "category": "Regex Guard",
+      "expected_outcome": "out_of_scope",
+      "expected_rule": null,
+      "rationale": "Regex semantics are not modeled in Z3 theories; conditions are explored conservatively as unmodeled branches.",
+      "attribution": "Synthetic fixture designed for SymGuard evaluation"
+    },
+    {
+      "case_id": "BENCH-011",
+      "path": "cases/out_of_scope/out_of_scope_deep_loop.py",
+      "category": "Loop Bound Exceeded",
+      "expected_outcome": "out_of_scope",
+      "expected_rule": null,
+      "rationale": "Condition is only reachable at iteration 8, well beyond UNROLL_DEPTH=3, producing loop-bound note.",
+      "attribution": "Synthetic fixture designed for SymGuard evaluation"
+    }
+  ]
+}

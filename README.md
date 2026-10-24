@@ -1,172 +1,149 @@
 # SymGuard (AST + Taint Tracking + Z3 SMT Proofs)
 
-A static analyzer that doesn't guess whether code is vulnerable — it
-**proves** it, using an SMT solver (Z3).
+> [!NOTE]
+> **Research-Style Prototype Notice:** SymGuard is an exploratory static analysis prototype that proves reachable security vulnerabilities using Z3 SMT constraint solving. It does **not** provide a commercial-grade safety certification or support arbitrary Python semantics. A clean result applies only to the supported language subset and bounded loop unrolling depth.
 
-## How it works
+A static analyzer that doesn't guess whether code is vulnerable — it **proves** it, using an SMT solver (Z3).
 
 ```
 source.py --[ast.parse]--> AST --[symbolic execution]--> Z3 formulas --[solver]--> proof
 ```
 
-1. **Parse.** Python's built-in `ast` module turns source into an Abstract
-   Syntax Tree — no custom lexer/parser needed, so effort goes into the
-   analysis, not re-implementing a Python front end.
-2. **Symbolically execute.** The tool walks the AST and, instead of running
-   the code, builds up a *symbolic* environment: every variable maps to a
-   Z3 term (`Int` or `String` theory) rather than a concrete value. Every
-   `if` **forks** execution into two paths — one with the condition added
-   to the path constraint, one with its negation — so both branches are
-   verified independently.
-3. **Track taint.** Any value derived from `input()`, `sys.argv`,
-   `os.environ.get(...)`, Flask's `request.args/form/values.get(...)`, or a
-   function parameter annotated `: Tainted`, is marked tainted. Taint
-   propagates through string concatenation, f-strings, `%`-formatting, and
-   arithmetic.
-4. **Prove reachability at sinks.** When a tainted value reaches a
-   dangerous sink — `eval`/`exec`, `os.system`/`subprocess(..., shell=True)`,
-   `cursor.execute` with a concatenated (non-parameterized) query, or a
-   list index — the accumulated path constraint is handed to Z3:
+## How It Works
 
-   > "Is there any assignment to the tainted symbols that satisfies every
-   > branch condition on the path leading to this sink?"
+1. **Parse:** Python's built-in `ast` module turns source code into an Abstract Syntax Tree — no custom lexer or parser needed.
+2. **Symbolically execute:** The engine walks the AST and builds up a *symbolic* environment: variables map to Z3 terms (`Int` or `String` theories). Every `if` **forks** execution into two independent paths: one with condition added to path constraints, one with its negation.
+3. **Track taint:** Any value derived from `input()`, `sys.argv`, `os.environ.get(...)`, Flask's `request.args/form/values.get(...)`, or a function parameter annotated `: Tainted` is tracked. Taint propagates through string concatenation, f-strings, `%`-formatting, and arithmetic.
+4. **Prove reachability at sinks:** When a tainted value reaches a dangerous sink (`os.system`, `eval`, `cursor.execute`, subscript indexing), the accumulated path constraint is queried against Z3:
+   - **SAT** → The vulnerability is mathematically reachable. Z3 returns a concrete **counterexample** exploit payload.
+   - **UNSAT** → The path is mathematically infeasible. The tool certifies that the sink is safe under the modeled semantics.
+   - **UNKNOWN** → Solver timeout or unmodeled theory.
 
-   - **SAT** → the vulnerability is real and reachable. Z3 also returns a
-     concrete **counterexample**: actual input values that trigger it.
-   - **UNSAT** → that path is mathematically proven infeasible — the tool
-     can positively certify the sink safe on that path, not just "didn't
-     find a pattern match."
+---
 
-This is what separates it from grep/regex-based scanners: an `if` that
-looks like it blocks an attack (`if user_input == "safe_mode":`) is not
-assumed safe — the solver checks whether the *sink itself* is still
-reachable with a value that satisfies the guard, catching e.g. exploits
-that hide inside an apparently-restrictive branch.
+## Vulnerability Rules Catalog
 
-## Vulnerability classes covered
+| Rule ID | Category | Sinks Recognized | Safe Patterns |
+|---|---|---|---|
+| `SYM001` | OS Command Injection | `os.system`, `os.popen`, `subprocess.run/call/Popen(..., shell=True)` | List-form `subprocess` without `shell=True` |
+| `SYM002` | Code Injection | `eval`, `exec` | Safe parsers (`ast.literal_eval`, `json.loads`) |
+| `SYM003` | SQL Injection | `*.execute(...)` with string formatting | Parameterized query `execute(query, params)` |
+| `SYM004` | Out-of-Bounds Indexing | `list_var[tainted_idx]` | Bounds checks (`0 <= idx < len(list)`) |
+| `SYM901` | Loop Unrolling Note | `(loop body)` | Explicit notification of bounded iteration |
 
-| Class | Sinks recognized | Notes |
-|---|---|---|
-| OS command injection | `os.system`, `os.popen`, `subprocess.run/call/Popen(..., shell=True)` | list-form `subprocess` args without `shell=True` are correctly treated as safe |
-| Code injection | `eval`, `exec` | |
-| SQL injection | `*.execute(...)` | flags string-built queries; automatically recognizes parameterized `execute(query, params)` as the fix and does not flag it |
-| Out-of-bounds indexing (buffer-overflow analog) | `list_var[tainted_idx]` | list length tracked symbolically; bounds-checking `if` guards are verified to actually constrain the index, inside loops too |
+---
 
-## Loop support (bounded unrolling)
+## Installation
 
-`for`/`while` loop bodies are unrolled a fixed number of times
-(`UNROLL_DEPTH = 3` in `analyzer.py`) rather than skipped. This is the same
-trade-off bounded model checkers like CBMC make:
+### Prerequisites
+- Python 3.11 or Python 3.12
 
-- Any vulnerability reachable within `UNROLL_DEPTH` iterations **will** be
-  found, with a real Z3 counterexample — no false negatives in that window.
-- A clean report only certifies safety **up to that depth**, not for
-  arbitrarily many iterations. Every analyzed loop gets an explicit `[info]`
-  note saying so in both the console and JSON output, rather than silently
-  overclaiming a full proof.
-
-See `examples/loop_unrolling.py` for a vulnerable `for` loop (command
-injection reproduced on every unrolled iteration) alongside a `while` loop
-that stays proven-safe across all 3 unrolled copies because it re-checks
-bounds every iteration.
-
-## CLI usage / CI integration
-
+### Runtime Dependencies
 ```bash
-# human-readable report (default)
-python3 analyzer.py app.py
-
-# machine-readable JSON, printed to stdout (pipeable)
-python3 analyzer.py app.py --format json
-
-# JSON written to a file instead of stdout
-python3 analyzer.py app.py --format json --output findings.json
-
-# exit 1 if any finding is a PROVEN vulnerability -- the actual CI gate
-python3 analyzer.py app.py --format json --output findings.json --fail-on-vulnerable
+pip install -r requirements.txt
 ```
 
-The JSON schema (`schema_version: "1.0"`) is stable so a CI step or a
-future web dashboard can consume it directly:
+### Development & Test Dependencies
+```bash
+pip install -r requirements-dev.txt
+```
 
+---
+
+## CLI Usage
+
+### 1. Human-Readable Report (Default)
+```bash
+python analyzer.py examples/command_injection.py
+```
+
+### 2. Machine-Readable JSON Report
+```bash
+python analyzer.py examples/command_injection.py --format json --output findings.json
+```
+
+Example JSON schema (`schema_version: "1.1"`):
 ```json
 {
-  "schema_version": "1.0",
-  "tool": "vuln_analyzer",
-  "target": "app.py",
-  "generated_at": "2026-08-14T11:09:41Z",
-  "summary": {"vulnerable": 1, "safe": 1, "unknown": 0, "notes": 0},
+  "schema_version": "1.1",
+  "tool": "SymGuard",
+  "target": "examples/command_injection.py",
+  "summary": { "vulnerable": 2, "safe": 0, "unknown": 0, "notes": 0 },
   "findings": [
     {
+      "rule_id": "SYM001",
+      "rule_name": "OS Command Injection",
       "vuln_type": "OS Command Injection",
-      "location": "module:line 12",
-      "line": 12,
+      "location": "module:line 9",
+      "line": 9,
+      "column": 5,
+      "uri": "examples/command_injection.py",
       "sink": "os.system(...)",
       "tainted_source": "stdin (input())",
-      "path_condition": "not (user_input == 'safe_mode')",
+      "path_condition": "user_input == 'safe_mode'",
       "verdict": "VULNERABLE (proven reachable by Z3)",
       "severity": "high",
-      "z3_counterexample": "[stdin__1 = \"\"]"
+      "message": "Proven reachable OS Command Injection at os.system(...) via stdin (input()).",
+      "z3_counterexample": "[stdin__1 = \"safe_mode\"]"
     }
   ]
 }
 ```
 
-`severity` (`high` | `safe` | `unknown` | `info`) and `line` exist
-specifically so a GitHub Actions annotation or a dashboard's line-highlight
-can be driven straight off this file without re-parsing the `verdict`
-string. A ready-to-use workflow is in `.github_workflow_example.yml`
-(rename to `.github/workflows/analyze.yml` to enable it) — it runs the
-analyzer on every push/PR, fails the build on a proven vulnerability, and
-uploads `findings.json` as a build artifact regardless of outcome.
-
-## Usage
-
+### 3. SARIF 2.1.0 Report (for GitHub Code Scanning & IDEs)
 ```bash
-python3 analyzer.py path/to/source.py
+python analyzer.py examples/command_injection.py --format sarif --output findings.sarif
 ```
 
-Run it against the bundled examples:
-
+### 4. CI Gating (`--fail-on-vulnerable`)
+Exit code is `1` if any proven `high` severity vulnerability is found; `0` if clean; `2` on syntax or file errors:
 ```bash
-python3 analyzer.py examples/command_injection.py
-python3 analyzer.py examples/sql_injection.py
-python3 analyzer.py examples/out_of_bounds.py
-python3 analyzer.py examples/function_entrypoint.py
-python3 analyzer.py examples/loop_unrolling.py
+python analyzer.py target.py --fail-on-vulnerable
 ```
 
-`out_of_bounds.py` is the best demo of the "wow factor": it contains one
-unguarded index (proven **vulnerable**, with a concrete exploit value) and
-one properly bounds-checked index (proven **safe**, UNSAT) — the same
-solver, two opposite, mathematically justified verdicts.
+---
 
-## Supported source subset & honest limitations
+## Running Tests & Benchmark
 
-This is a research-style prototype, not a production scanner. To keep the
-AST→logic translation *sound*, it only fully models:
+### Automated Regression Suite (Pytest)
+Run all 30 regression tests covering sources, sinks, path constraints, loop bounds, schema contracts, CLI exit codes, JSON, and SARIF output:
+```bash
+pytest -v
+```
 
-- assignments, augmented assignments, `if`/`elif`/`else` (forked, not merged)
-- int/str arithmetic, comparisons, boolean ops, f-strings
-- calls recognized as taint sources/sinks (see table above), plus `len()`
-  and `int()` on tracked values
-- `for`/`while` loops, via bounded unrolling (see above) — sound *within*
-  the unroll depth, explicitly not claimed beyond it
+### Reproducible Benchmark
+Run the transparent benchmark corpus across vulnerable, safe, and out-of-scope cases:
+```bash
+python benchmark/run_benchmark.py
+```
+Outputs a Markdown summary and generates `benchmark/results.json`.
 
-Things it deliberately does **not** attempt to prove (rather than silently
-mis-model): unbounded/arbitrary-depth loop behavior beyond `UNROLL_DEPTH`,
-classes/objects beyond the simple `Tainted` marker, complex string methods,
-exceptions, or inter-procedural calls between two *analyzed* functions
-(each `Tainted`-annotated function is checked in isolation). Sanitizer
-calls like `.isdigit()`/`re.match()` used as guards are recognized as
-branch points (both paths still explored) but aren't modeled precisely in
-the theory, so the tool is conservative — it can under-approximate what
-counts as "safe" but should never *invent* a safety proof it can't back
-with an actual UNSAT result from Z3.
+---
 
-## Files
+## Documentation Links
 
-- `analyzer.py` — the analyzer (parser driver, symbolic executor, Z3
-  encoding, sink/source catalog, reporting)
-- `examples/` — four annotated sample programs (command injection, SQL
-  injection, out-of-bounds indexing, function-entrypoint/`Tainted` mode)
+- [Architecture Overview](docs/ARCHITECTURE.md) — Detailed design of AST parsing, symbolic value mapping, path constraints, and Z3 SMT solver queries.
+- [Supported Subset & Limitations](docs/SUPPORTED_SUBSET.md) — Explicit language subset, bounded unrolling, and out-of-scope constructs.
+- [Benchmark Methodology](docs/BENCHMARK_METHODOLOGY.md) — Corpus structure, evaluation protocol, and metric definitions.
+- [Upgrade Plan](docs/SYMGUARD_UPGRADE_PLAN.md) — Full roadmap and completion verification checklist.
+
+---
+
+## Bounded Loop Support
+
+`for` and `while` loop bodies are unrolled a fixed number of times (`UNROLL_DEPTH = 3` in `analyzer.py`):
+- Any vulnerability reachable within `UNROLL_DEPTH` iterations is proven with a real Z3 counterexample.
+- A clean report only certifies safety up to that depth, not for arbitrarily many iterations.
+- An informational note (`SYM901`) is emitted for analyzed loops to maintain transparency.
+
+---
+
+## Repository Files
+
+- `analyzer.py` — Core static analyzer (AST traversal, symbolic executor, Z3 constraint solver, reporting).
+- `requirements.txt` / `requirements-dev.txt` — Minimal runtime and development dependencies.
+- `.github/workflows/symguard-ci.yml` — Automated CI workflow running pytest and artifact generation.
+- `tests/` — Comprehensive regression test suite.
+- `benchmark/` — Labelled benchmark corpus and runner script.
+- `docs/` — Architecture, supported subset, methodology, and upgrade plan documentation.
+- `examples/` — Annotated sample programs demonstrating vulnerable and safe proof paths.

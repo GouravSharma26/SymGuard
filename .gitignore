@@ -9,3 +9,6 @@ ENV/
 env.bak/
 venv.bak/
 *.log
+.pytest_cache/
+reports/
+*.sarif
