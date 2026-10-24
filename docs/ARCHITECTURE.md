@@ -4,7 +4,15 @@ SymGuard is a static analysis tool that verifies whether attacker-controlled dat
 1. Abstract Syntax Tree (AST) parsing (`ast` module)
 2. Path-sensitive symbolic execution with taint tracking
 3. Satisfiability Modulo Theories (SMT) constraint solving via Z3
+## System Architecture Diagram
 
+![System Architecture](../diagrams/diagrams_system_architecture.svg)
+
+## Engine Dataflow Diagram
+
+![Engine Dataflow](../diagrams/diagrams_engine_dataflow.svg)
+
+---
 ```
 Python Source File (.py)
          │

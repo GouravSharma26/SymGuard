@@ -15,8 +15,11 @@ import sys
 import urllib.request
 import urllib.error
 
+import os
+
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 BASE_URL = sys.argv[1] if len(sys.argv) > 1 else "http://localhost:5000"
-EXAMPLES_DIR = "examples"
+EXAMPLES_DIR = os.path.join(ROOT_DIR, "examples")
 
 # Known-correct summary counts, established earlier via:
 #   python3 analyzer.py examples/<file> --format json

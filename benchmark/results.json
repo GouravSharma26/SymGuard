@@ -1,6 +1,6 @@
 {
   "benchmark_version": "1.0.0",
-  "timestamp": "2026-10-24T07:57:54Z",
+  "timestamp": "2026-10-24T10:30:59Z",
   "environment": {
     "os": "Windows-11-10.0.26300-SP0",
     "python": "3.12.6",
@@ -19,7 +19,7 @@
     "f1_score": 1.0,
     "in_scope_accuracy": 1.0,
     "analysis_coverage": 0.7273,
-    "total_elapsed_ms": 23.02,
+    "total_elapsed_ms": 23.63,
     "note": "Precision, recall, and accuracy are strictly evaluated on the 8 in-scope cases. Out-of-scope cases are transparently tracked and excluded from binary classification metrics."
   },
   "in_scope_category_breakdown": {
@@ -50,7 +50,7 @@
       "detected_outcome": "vulnerable",
       "is_correct": true,
       "status": "PASS",
-      "elapsed_ms": 5.64,
+      "elapsed_ms": 7.19,
       "findings": [
         {
           "rule_id": "SYM001",
@@ -70,7 +70,7 @@
       "detected_outcome": "vulnerable",
       "is_correct": true,
       "status": "PASS",
-      "elapsed_ms": 1.06,
+      "elapsed_ms": 1.03,
       "findings": [
         {
           "rule_id": "SYM002",
@@ -90,7 +90,7 @@
       "detected_outcome": "vulnerable",
       "is_correct": true,
       "status": "PASS",
-      "elapsed_ms": 0.89,
+      "elapsed_ms": 0.95,
       "findings": [
         {
           "rule_id": "SYM003",
@@ -110,7 +110,7 @@
       "detected_outcome": "vulnerable",
       "is_correct": true,
       "status": "PASS",
-      "elapsed_ms": 4.03,
+      "elapsed_ms": 3.89,
       "findings": [
         {
           "rule_id": "SYM004",
@@ -130,7 +130,7 @@
       "detected_outcome": "clean",
       "is_correct": true,
       "status": "PASS",
-      "elapsed_ms": 0.39,
+      "elapsed_ms": 0.44,
       "findings": []
     },
     {
@@ -142,7 +142,7 @@
       "detected_outcome": "clean",
       "is_correct": true,
       "status": "PASS",
-      "elapsed_ms": 0.27,
+      "elapsed_ms": 0.28,
       "findings": []
     },
     {
@@ -154,7 +154,7 @@
       "detected_outcome": "safe",
       "is_correct": true,
       "status": "PASS",
-      "elapsed_ms": 1.94,
+      "elapsed_ms": 2.3,
       "findings": [
         {
           "rule_id": "SYM004",
@@ -174,7 +174,7 @@
       "detected_outcome": "safe",
       "is_correct": true,
       "status": "PASS",
-      "elapsed_ms": 3.28,
+      "elapsed_ms": 3.38,
       "findings": [
         {
           "rule_id": "SYM001",
@@ -194,7 +194,7 @@
       "detected_outcome": "vulnerable",
       "is_correct": null,
       "status": "EXCLUDED (out-of-scope)",
-      "elapsed_ms": 1.85,
+      "elapsed_ms": 1.29,
       "findings": [
         {
           "rule_id": "SYM001",
@@ -214,7 +214,7 @@
       "detected_outcome": "vulnerable",
       "is_correct": null,
       "status": "EXCLUDED (out-of-scope)",
-      "elapsed_ms": 1.17,
+      "elapsed_ms": 0.76,
       "findings": [
         {
           "rule_id": "SYM001",
@@ -234,7 +234,7 @@
       "detected_outcome": "bounded_safe",
       "is_correct": null,
       "status": "EXCLUDED (out-of-scope)",
-      "elapsed_ms": 2.15,
+      "elapsed_ms": 1.85,
       "findings": [
         {
           "rule_id": "SYM001",

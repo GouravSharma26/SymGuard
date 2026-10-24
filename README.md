@@ -9,6 +9,12 @@ A static analyzer that doesn't guess whether code is vulnerable — it **proves*
 source.py --[ast.parse]--> AST --[symbolic execution]--> Z3 formulas --[solver]--> proof
 ```
 
+## System Architecture & Dataflow
+
+![System Architecture](diagrams/diagrams_system_architecture.svg)
+
+---
+
 ## How It Works
 
 1. **Parse:** Python's built-in `ast` module turns source code into an Abstract Syntax Tree — no custom lexer or parser needed.
@@ -18,6 +24,8 @@ source.py --[ast.parse]--> AST --[symbolic execution]--> Z3 formulas --[solver]-
    - **SAT** → The vulnerability is mathematically reachable. Z3 returns a concrete **counterexample** exploit payload.
    - **UNSAT** → The path is mathematically infeasible. The tool certifies that the sink is safe under the modeled semantics.
    - **UNKNOWN** → Solver timeout or unmodeled theory.
+
+![Engine Dataflow](diagrams/diagrams_engine_dataflow.svg)
 
 ---
 
@@ -46,6 +54,9 @@ pip install -r requirements.txt
 ### Development & Test Dependencies
 ```bash
 pip install -r requirements-dev.txt
+
+# Provision the official SARIF schema for offline test validation
+python scripts/fetch_sarif_schema.py
 ```
 
 ---
@@ -106,7 +117,7 @@ python analyzer.py target.py --fail-on-vulnerable
 ## Running Tests & Benchmark
 
 ### Automated Regression Suite (Pytest)
-Run all 30 regression tests covering sources, sinks, path constraints, loop bounds, schema contracts, CLI exit codes, JSON, and SARIF output:
+Run all 32 regression tests covering sources, sinks, path constraints, loop bounds, schema contracts, CLI exit codes, JSON, and official SARIF 2.1.0 schema validation:
 ```bash
 pytest -v
 ```
@@ -120,12 +131,23 @@ Outputs a Markdown summary and generates `benchmark/results.json`.
 
 ---
 
+## Web Dashboard
+
+SymGuard includes an interactive web dashboard for real-time code analysis and visualization:
+
+```bash
+python web/app.py
+```
+
+Access the UI at `http://localhost:5000` to upload or paste Python source files, explore tainted paths, and review concrete Z3 counterexamples.
+
+---
+
 ## Documentation Links
 
 - [Architecture Overview](docs/ARCHITECTURE.md) — Detailed design of AST parsing, symbolic value mapping, path constraints, and Z3 SMT solver queries.
 - [Supported Subset & Limitations](docs/SUPPORTED_SUBSET.md) — Explicit language subset, bounded unrolling, and out-of-scope constructs.
 - [Benchmark Methodology](docs/BENCHMARK_METHODOLOGY.md) — Corpus structure, evaluation protocol, and metric definitions.
-- [Upgrade Plan](docs/SYMGUARD_UPGRADE_PLAN.md) — Full roadmap and completion verification checklist.
 
 ---
 
@@ -142,8 +164,12 @@ Outputs a Markdown summary and generates `benchmark/results.json`.
 
 - `analyzer.py` — Core static analyzer (AST traversal, symbolic executor, Z3 constraint solver, reporting).
 - `requirements.txt` / `requirements-dev.txt` — Minimal runtime and development dependencies.
-- `.github/workflows/symguard-ci.yml` — Automated CI workflow running pytest and artifact generation.
-- `tests/` — Comprehensive regression test suite.
-- `benchmark/` — Labelled benchmark corpus and runner script.
-- `docs/` — Architecture, supported subset, methodology, and upgrade plan documentation.
+- `.github/workflows/symguard-ci.yml` — Automated CI workflow running pytest, benchmark, and artifact generation.
+- `benchmark/` — Labelled benchmark corpus, runner script, and reproducible metrics.
+- `diagrams/` — System architecture and engine dataflow diagrams and generators.
+- `docs/` — Architecture, supported subset, and benchmark methodology documentation.
 - `examples/` — Annotated sample programs demonstrating vulnerable and safe proof paths.
+- `schemas/` — Official OASIS SARIF 2.1.0 JSON schema for offline validation.
+- `scripts/` — Utility scripts for schema fetching and dashboard verification.
+- `tests/` — Automated pytest regression suite (32 tests).
+- `web/` — Web dashboard UI for interactive vulnerability exploration.
